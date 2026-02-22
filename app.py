@@ -1,15 +1,19 @@
-from fastapi import FastAPI, Query
+from flask import Flask, request, jsonify
 import yt_dlp
-import uvicorn
+import os
 
-app = FastAPI()
+app = Flask(__name__)
 
-@app.get("/search")
-def search_youtube(q: str = Query(None)):
-    if not q:
-        return {"success": False, "message": "Oye! Kuch likh toh sahi saste hero! 😏"}
+@app.route('/')
+def home():
+    return jsonify({"status": "Zinda Hoon", "message": "Uvicorn ko kachre mein phenk diya! 😏🔥"})
 
-    # 🔥 Sardar RDX Heavy Settings
+@app.route('/search', methods=['GET'])
+def search_youtube():
+    query = request.args.get('q')
+    if not query:
+        return jsonify({"success": False, "message": "Oye! Kuch likh toh sahi! 😏"}), 400
+
     ydl_opts = {
         'format': 'best',
         'quiet': True,
@@ -20,28 +24,24 @@ def search_youtube(q: str = Query(None)):
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            # ytsearch1 matlab pehla result search karo
-            search_query = f"ytsearch1:{q}"
-            info = ydl.extract_info(search_query, download=False)
-            
+            info = ydl.extract_info(f"ytsearch1:{query}", download=False)
             if 'entries' in info and len(info['entries']) > 0:
                 video = info['entries'][0]
-                return {
+                return jsonify({
                     "success": True,
                     "result": {
                         "title": video.get('title'),
                         "id": video.get('id'),
                         "url": f"https://www.youtube.com/watch?v={video.get('id')}",
                         "duration": video.get('duration'),
-                        "uploader": video.get('uploader'),
-                        "views": video.get('view_count')
+                        "uploader": video.get('uploader')
                     }
-                }
-            else:
-                return {"success": False, "message": "Kuch nahi mila! 🖕"}
+                })
+            return jsonify({"success": False, "message": "Kuch nahi mila! 🖕"}), 404
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        return jsonify({"success": False, "error": str(e)}), 500
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
-  
+    port = int(os.environ.get("PORT", 8000))
+    app.run(host="0.0.0.0", port=port)
+    
